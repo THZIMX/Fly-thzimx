@@ -1,23 +1,18 @@
--- Fly Script para Roblox (Uso Educacional)
+-- Fly Script com Painel de Controle e Botão "TH"
+
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-local humanoid = character:WaitForChild("Humanoid")
-local camera = game.Workspace.CurrentCamera
 
 local flying = false
 local speed = 50
-local height = 0 -- Inicia com a altura no chão
 local bodyGyro, bodyVelocity
-
-local isAnalogPressed = false -- Variável para saber se o analógico está pressionado
 
 -- Função para alternar voo
 local function toggleFly()
     flying = not flying
-    
+
     if flying then
-        -- Criando os componentes necessários para o voo
         bodyGyro = Instance.new("BodyGyro", humanoidRootPart)
         bodyGyro.P = 9e4
         bodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
@@ -26,118 +21,80 @@ local function toggleFly()
         bodyVelocity = Instance.new("BodyVelocity", humanoidRootPart)
         bodyVelocity.velocity = Vector3.new(0, 0, 0)
         bodyVelocity.maxForce = Vector3.new(9e9, 9e9, 9e9)
-        
     else
-        -- Removendo os componentes para parar o voo
         if bodyGyro then bodyGyro:Destroy() end
         if bodyVelocity then bodyVelocity:Destroy() end
     end
 end
 
--- Função para mover enquanto voa, controlado pelo analógico
-local function moveFly()
-    if flying and bodyVelocity and isAnalogPressed then
-        local cameraDirection = camera.CFrame.lookVector
-        local analogDirection = camera.CFrame.RightVector -- Direção lateral com base na câmera
-
-        -- Combina o movimento com a direção da câmera e a direção do analógico
-        local direction = (cameraDirection * speed) + (analogDirection * speed * 0.5) + Vector3.new(0, height, 0)
-        bodyVelocity.velocity = direction
-    end
-end
-
--- Função para ajustar a altura com base no ângulo da câmera
-local function updateHeight()
+-- Função para mover enquanto voa
+local function moveFly(direction)
     if flying and bodyVelocity then
-        -- Verifica a rotação da câmera para ajustar a altura
-        local cameraAngle = camera.CFrame.LookVector.y
-        if cameraAngle > 0 then
-            height = speed * 0.5  -- Subir se a câmera estiver olhando para cima
-        elseif cameraAngle < 0 then
-            height = -speed * 0.5 -- Descer se a câmera estiver olhando para baixo
-        else
-            height = 0 -- Manter a altura se a câmera estiver reta
-        end
+        bodyVelocity.velocity = direction * speed
     end
 end
 
--- Detecta quando o analógico é pressionado
-local function onAnalogPress()
-    isAnalogPressed = true
-end
-
--- Detecta quando o analógico é liberado
-local function onAnalogRelease()
-    isAnalogPressed = false
-    if bodyVelocity then
-        bodyVelocity.velocity = Vector3.new(0, 0, 0) -- Para o movimento quando o analógico é solto
-    end
-end
-
--- Interface Gráfica (Botão Fly móvel)
+-- Criando a GUI
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "FlyGUI"
+gui.Name = "FlyPanelGUI"
 
--- Botão de Ativar/Desativar Voo
-local flyButton = Instance.new("TextButton", gui)
-flyButton.Size = UDim2.new(0, 100, 0, 50)
-flyButton.Position = UDim2.new(0, 10, 1, -60)
-flyButton.Text = "Fly"
+-- Painel de Controle
+local panel = Instance.new("Frame", gui)
+panel.Size = UDim2.new(0, 200, 0, 300)
+panel.Position = UDim2.new(0.5, -100, 0.5, -150)
+panel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+panel.Visible = false -- Inicialmente invisível
+
+-- Nome do Painel
+local panelTitle = Instance.new("TextLabel", panel)
+panelTitle.Size = UDim2.new(0, 200, 0, 40)
+panelTitle.Position = UDim2.new(0, 0, 0, 0)
+panelTitle.Text = "Fly thzimx"
+panelTitle.TextScaled = true
+panelTitle.BackgroundTransparency = 1
+panelTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+-- Botão para abrir/fechar o painel
+local togglePanelButton = Instance.new("TextButton", gui)
+togglePanelButton.Size = UDim2.new(0, 100, 0, 50)
+togglePanelButton.Position = UDim2.new(0, 10, 1, -60)
+togglePanelButton.Text = "Abrir Painel"
+togglePanelButton.TextScaled = true
+
+togglePanelButton.MouseButton1Click:Connect(function()
+    panel.Visible = not panel.Visible  -- Alterna a visibilidade do painel
+end)
+
+-- Botão de Ativar/Desativar Fly com texto "TH"
+local flyButton = Instance.new("TextButton", panel)
+flyButton.Size = UDim2.new(0, 180, 0, 50)
+flyButton.Position = UDim2.new(0, 10, 0, 50)
+flyButton.Text = "TH"  -- Texto "TH" no botão
 flyButton.TextScaled = true
-
+flyButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)  -- Fundo branco do botão
 flyButton.MouseButton1Click:Connect(toggleFly)
 
--- Tornar o botão Fly móvel
-local dragging, dragInput, dragStart, startPos
+-- Botões de Movimento
+local directions = {
+    {Name = "Forward", Direction = Vector3.new(0, 0, -1), Position = UDim2.new(0.5, -50, 0.6, -50)},
+    {Name = "Backward", Direction = Vector3.new(0, 0, 1), Position = UDim2.new(0.5, -50, 0.7, -50)},
+    {Name = "Left", Direction = Vector3.new(-1, 0, 0), Position = UDim2.new(0.4, -50, 0.65, -50)},
+    {Name = "Right", Direction = Vector3.new(1, 0, 0), Position = UDim2.new(0.6, -50, 0.65, -50)},
+}
 
-flyButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = flyButton.Position
-    end
-end)
-
-flyButton.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        flyButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-flyButton.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
-
--- Atualização do movimento e altura
-game:GetService("RunService").Heartbeat:Connect(function()
-    if flying then
-        -- Controla o movimento enquanto o analógico está pressionado
-        moveFly()
-        -- Controla a altura
-        updateHeight()
-    end
-end)
-
--- Detecção do analógico apenas para dispositivos móveis (touch) e PCs
-game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.Touch then
-        onAnalogPress() -- Ativa o movimento no analógico quando pressionado
-    elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-        -- Adicional para PC, se o jogador clicar no analógico com o mouse
-        -- Adapte conforme necessário, caso use algum tipo de joystick virtual
-        onAnalogPress()
-    end
-end)
-
-game:GetService("UserInputService").InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        onAnalogRelease() -- Desativa o movimento no analógico quando solto
-    elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-        -- Desativa o movimento do analógico quando o botão do mouse é solto
-        onAnalogRelease()
-    end
-end)
+for _, dir in pairs(directions) do
+    local button = Instance.new("TextButton", panel)
+    button.Name = dir.Name
+    button.Size = UDim2.new(0, 80, 0, 50)
+    button.Position = dir.Position
+    button.Text = dir.Name
+    button.TextScaled = true
+    
+    button.MouseButton1Down:Connect(function()
+        moveFly(dir.Direction)
+    end)
+    
+    button.MouseButton1Up:Connect(function()
+        moveFly(Vector3.new(0, 0, 0))
+    end)
+end
