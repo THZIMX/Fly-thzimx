@@ -74,7 +74,7 @@ local function onAnalogRelease()
     end
 end
 
--- Interface Gráfica (Somente o botão de Fly)
+-- Interface Gráfica (Botão Fly móvel)
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.Name = "FlyGUI"
 
@@ -87,6 +87,30 @@ flyButton.TextScaled = true
 
 flyButton.MouseButton1Click:Connect(toggleFly)
 
+-- Tornar o botão Fly móvel
+local dragging, dragInput, dragStart, startPos
+
+flyButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = flyButton.Position
+    end
+end)
+
+flyButton.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        flyButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+flyButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
 -- Atualização do movimento e altura
 game:GetService("RunService").Heartbeat:Connect(function()
     if flying then
@@ -97,17 +121,23 @@ game:GetService("RunService").Heartbeat:Connect(function()
     end
 end)
 
--- Supondo que o analógico esteja sendo detectado de alguma forma no seu jogo:
--- Use esses métodos para ativar/desativar o movimento no analógico (modifique conforme necessário no seu jogo)
+-- Detecção do analógico apenas para dispositivos móveis (touch) e PCs
 game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.Touch then
         onAnalogPress() -- Ativa o movimento no analógico quando pressionado
+    elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+        -- Adicional para PC, se o jogador clicar no analógico com o mouse
+        -- Adapte conforme necessário, caso use algum tipo de joystick virtual
+        onAnalogPress()
     end
 end)
 
 game:GetService("UserInputService").InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         onAnalogRelease() -- Desativa o movimento no analógico quando solto
+    elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+        -- Desativa o movimento do analógico quando o botão do mouse é solto
+        onAnalogRelease()
     end
 end)
