@@ -3,10 +3,11 @@ local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:WaitForChild("Humanoid")
+local camera = game.Workspace.CurrentCamera
 
 local flying = false
 local speed = 50
-local height = 50
+local height = 0 -- Inicia com a altura no chão
 local bodyGyro, bodyVelocity
 
 -- Função para alternar voo
@@ -21,8 +22,9 @@ local function toggleFly()
         bodyGyro.cframe = humanoidRootPart.CFrame
         
         bodyVelocity = Instance.new("BodyVelocity", humanoidRootPart)
-        bodyVelocity.velocity = Vector3.new(0, height, 0)
+        bodyVelocity.velocity = Vector3.new(0, 0, 0)
         bodyVelocity.maxForce = Vector3.new(9e9, 9e9, 9e9)
+        
     else
         -- Removendo os componentes para parar o voo
         if bodyGyro then bodyGyro:Destroy() end
@@ -31,20 +33,29 @@ local function toggleFly()
 end
 
 -- Função para mover enquanto voa, controlado pelo analógico
-local function moveFly(direction)
+local function moveFly()
     if flying and bodyVelocity then
-        bodyVelocity.velocity = direction * speed
+        local direction = (camera.CFrame.lookVector * speed) + Vector3.new(0, height, 0)
+        bodyVelocity.velocity = direction
     end
 end
 
--- Função para ajustar a altura do voo
-local function changeHeight(amount)
+-- Função para ajustar a altura com base no ângulo da câmera
+local function updateHeight()
     if flying and bodyVelocity then
-        bodyVelocity.velocity = Vector3.new(0, amount, 0)
+        -- Verifica a rotação da câmera para ajustar a altura
+        local cameraAngle = camera.CFrame.LookVector.y
+        if cameraAngle > 0 then
+            height = speed * 0.5  -- Subir se a câmera estiver olhando para cima
+        elseif cameraAngle < 0 then
+            height = -speed * 0.5 -- Descer se a câmera estiver olhando para baixo
+        else
+            height = 0 -- Manter a altura se a câmera estiver reta
+        end
     end
 end
 
--- Interface Gráfica (Botões para Mobile)
+-- Interface Gráfica (Somente o botão de Fly)
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.Name = "FlyGUI"
 
@@ -57,48 +68,12 @@ flyButton.TextScaled = true
 
 flyButton.MouseButton1Click:Connect(toggleFly)
 
--- Botões de Movimento
-local directions = {
-    {Name = "Forward", Direction = Vector3.new(0, 0, -1), Position = UDim2.new(0.5, -50, 0.8, -50)},
-    {Name = "Backward", Direction = Vector3.new(0, 0, 1), Position = UDim2.new(0.5, -50, 0.9, -50)},
-    {Name = "Left", Direction = Vector3.new(-1, 0, 0), Position = UDim2.new(0.4, -50, 0.85, -50)},
-    {Name = "Right", Direction = Vector3.new(1, 0, 0), Position = UDim2.new(0.6, -50, 0.85, -50)},
-    {Name = "Up", Direction = Vector3.new(0, 1, 0), Position = UDim2.new(0.5, -50, 0.75, -50)},
-    {Name = "Down", Direction = Vector3.new(0, -1, 0), Position = UDim2.new(0.5, -50, 0.95, -50)},
-}
-
-for _, dir in pairs(directions) do
-    local button = Instance.new("TextButton", gui)
-    button.Name = dir.Name
-    button.Size = UDim2.new(0, 80, 0, 50)
-    button.Position = dir.Position
-    button.Text = dir.Name
-    button.TextScaled = true
-    
-    button.MouseButton1Down:Connect(function()
-        moveFly(dir.Direction)
-    end)
-    
-    button.MouseButton1Up:Connect(function()
-        moveFly(Vector3.new(0, 0, 0))
-    end)
-end
-
--- Ajustando a altura (Botões para subir e descer)
-local upButton = Instance.new("TextButton", gui)
-upButton.Size = UDim2.new(0, 100, 0, 50)
-upButton.Position = UDim2.new(0.5, -50, 0.7, -50)
-upButton.Text = "Up"
-upButton.TextScaled = true
-upButton.MouseButton1Down:Connect(function()
-    changeHeight(10) -- Ajuste a altura conforme necessário
-end)
-
-local downButton = Instance.new("TextButton", gui)
-downButton.Size = UDim2.new(0, 100, 0, 50)
-downButton.Position = UDim2.new(0.5, -50, 1, -60)
-downButton.Text = "Down"
-downButton.TextScaled = true
-downButton.MouseButton1Down:Connect(function()
-    changeHeight(-10) -- Ajuste a altura conforme necessário
+-- Atualização do movimento e altura
+game:GetService("RunService").Heartbeat:Connect(function()
+    if flying then
+        -- Controla o movimento
+        moveFly()
+        -- Controla a altura
+        updateHeight()
+    end
 end)
