@@ -10,6 +10,8 @@ local speed = 50
 local height = 0 -- Inicia com a altura no chão
 local bodyGyro, bodyVelocity
 
+local isAnalogPressed = false -- Variável para saber se o analógico está pressionado
+
 -- Função para alternar voo
 local function toggleFly()
     flying = not flying
@@ -34,8 +36,12 @@ end
 
 -- Função para mover enquanto voa, controlado pelo analógico
 local function moveFly()
-    if flying and bodyVelocity then
-        local direction = (camera.CFrame.lookVector * speed) + Vector3.new(0, height, 0)
+    if flying and bodyVelocity and isAnalogPressed then
+        local cameraDirection = camera.CFrame.lookVector
+        local analogDirection = camera.CFrame.RightVector -- Direção lateral com base na câmera
+
+        -- Combina o movimento com a direção da câmera e a direção do analógico
+        local direction = (cameraDirection * speed) + (analogDirection * speed * 0.5) + Vector3.new(0, height, 0)
         bodyVelocity.velocity = direction
     end
 end
@@ -55,6 +61,19 @@ local function updateHeight()
     end
 end
 
+-- Detecta quando o analógico é pressionado
+local function onAnalogPress()
+    isAnalogPressed = true
+end
+
+-- Detecta quando o analógico é liberado
+local function onAnalogRelease()
+    isAnalogPressed = false
+    if bodyVelocity then
+        bodyVelocity.velocity = Vector3.new(0, 0, 0) -- Para o movimento quando o analógico é solto
+    end
+end
+
 -- Interface Gráfica (Somente o botão de Fly)
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.Name = "FlyGUI"
@@ -71,9 +90,24 @@ flyButton.MouseButton1Click:Connect(toggleFly)
 -- Atualização do movimento e altura
 game:GetService("RunService").Heartbeat:Connect(function()
     if flying then
-        -- Controla o movimento
+        -- Controla o movimento enquanto o analógico está pressionado
         moveFly()
         -- Controla a altura
         updateHeight()
+    end
+end)
+
+-- Supondo que o analógico esteja sendo detectado de alguma forma no seu jogo:
+-- Use esses métodos para ativar/desativar o movimento no analógico (modifique conforme necessário no seu jogo)
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Touch then
+        onAnalogPress() -- Ativa o movimento no analógico quando pressionado
+    end
+end)
+
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        onAnalogRelease() -- Desativa o movimento no analógico quando solto
     end
 end)
